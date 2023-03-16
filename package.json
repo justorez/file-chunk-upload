@@ -1,0 +1,13 @@
+{
+  "name": "file-upload",
+  "version": "1.0.0",
+  "description": "分片上传示例",
+  "main": "index.js",
+  "scripts": {
+    "start": "pnpm --filter server --filter client start",
+    "start:client": "pnpm --filter client start",
+    "start:server": "pnpm --filter server start"
+  },
+  "author": "",
+  "license": "MIT"
+}

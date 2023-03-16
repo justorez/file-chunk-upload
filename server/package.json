@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "egg-bin dev",
+    "start": "egg-bin dev --port 7001",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

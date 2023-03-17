@@ -1,7 +1,6 @@
 // app/controller/home.js
 const path = require("path");
-const fse = require("fs-extra");
-
+const fs = require("fs-extra");
 const Controller = require("egg").Controller;
 
 class HomeController extends Controller {
@@ -10,6 +9,7 @@ class HomeController extends Controller {
             msg: "hello eggjs",
         };
     }
+
     async merge() {
         const { ext, size, hash } = this.ctx.request.body;
         const filePath = path.resolve(this.config.UPLOAD_DIR, `${hash}.${ext}`);
@@ -19,11 +19,13 @@ class HomeController extends Controller {
             msg: "合并成功",
         };
     }
+
     async getUploadedList(dirPath) {
-        return fse.existsSync(dirPath)
-            ? (await fse.readdir(dirPath)).filter((name) => name[0] !== ".") // 过滤诡异的隐藏文件 比如.DS_store
+        return fs.existsSync(dirPath)
+            ? (await fs.readdir(dirPath)).filter((name) => name[0] !== ".") // 过滤诡异的隐藏文件 比如.DS_store
             : [];
     }
+
     async check() {
         const { ext, hash } = this.ctx.request.body;
         const filePath = path.resolve(this.config.UPLOAD_DIR, `${hash}.${ext}`);
@@ -31,7 +33,7 @@ class HomeController extends Controller {
         // 文件是否存在
         let uploaded = false;
         let uploadedList = [];
-        if (fse.existsSync(filePath)) {
+        if (fs.existsSync(filePath)) {
             // 存在文件，直接返回已上传
             uploaded = true;
         } else {
@@ -47,6 +49,7 @@ class HomeController extends Controller {
             uploadedList, // 过滤诡异的隐藏文件
         };
     }
+
     async upload() {
         const { ctx } = this;
         if (Math.random() < 0.5) {
@@ -63,7 +66,7 @@ class HomeController extends Controller {
         const chunkPath = path.resolve(this.config.UPLOAD_DIR, hash);
 
         // 文件存在直接返回
-        if (fse.existsSync(filePath)) {
+        if (fs.existsSync(filePath)) {
             this.ctx.body = {
                 code: -1,
                 msg: "文件存在",
@@ -71,10 +74,10 @@ class HomeController extends Controller {
             };
             return;
         }
-        if (!fse.existsSync(this.config.UPLOAD_DIR)) {
-            await fse.mkdirs(this.config.UPLOAD_DIR);
+        if (!fs.existsSync(this.config.UPLOAD_DIR)) {
+            await fs.mkdirs(this.config.UPLOAD_DIR);
         }
-        await fse.move(file.filepath, `${chunkPath}/${chunkname}`);
+        await fs.move(file.filepath, `${chunkPath}/${chunkname}`);
         this.ctx.body = {
             code: 0,
             msg: "上传成功",

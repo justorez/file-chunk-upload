@@ -1,7 +1,7 @@
 <template>
     <div class="app">
         <div ref="drag" id="drag">
-            <input type="file" name="file" @change="handleFileChange" />
+            <input ref="input" type="file" name="file" @change="handleFileChange" />
             <!-- <img :src="preview" alt=""> -->
         </div>
         <!--
@@ -12,15 +12,24 @@
         <div v-if="file">{{file.name}}</div>
         -->
 
-        <div>上传进度</div>
-        <el-progress
-            text-inside
-            :stroke-width="20"
-            :percentage="uploadProgress"
-        ></el-progress>
-
-        <div>文件准备中</div>
         <div>
+            <el-button type="primary" @click="handleUpload">上 传</el-button>
+            <el-button type="primary" @click="handleSlowStartUpload"
+                >慢启动上传</el-button
+            >
+        </div>
+
+        <div class="row">
+            <span>上传进度</span>
+            <el-progress
+                text-inside
+                :stroke-width="20"
+                :percentage="uploadProgress"
+            ></el-progress>
+        </div>
+
+        <div class="row">
+            <span>文件准备中</span>
             <el-progress
                 text-inside
                 :stroke-width="20"
@@ -28,30 +37,29 @@
             ></el-progress>
         </div>
 
-        <div>
-            <el-button type="primary" @click="handleUpload">上 传</el-button>
-        </div>
-        <div>
-            <el-button type="primary" @click="handleSlowStartUpload"
-                >慢启动上传</el-button
-            >
-        </div>
-
         <!-- 方块进度条 -->
         <div class="cube-container" :style="{ width: cubeWidth + 'px' }">
-            <div class="cube" v-for="chunk in chunks" :key="chunk.name">
+            <div
+                v-for="(chunk, index) in chunks"
+                :key="chunk.name"
+                class="cube"
+                :class="{
+                    'border-top': index < cubeSideLen,
+                    'border-right': (index + 1) % cubeSideLen === 0
+                }"
+            >
                 <div
                     :class="{
                         uploading: chunk.progress > 0 && chunk.progress < 100,
                         success: chunk.progress == 100,
-                        error: chunk.progress < 0
+                        error: chunk.progress < 0,
                     }"
-                    :style="{ height: chunk.progress + '%' }"
+                    :style="{ width: chunk.progress + '%' }"
                 >
                     <i
                         v-if="chunk.progress < 100 && chunk.progress > 1"
                         class="el-icon-loading"
-                        style="color:#F56C6C;"
+                        style="color: #f56c6c"
                     ></i>
                 </div>
             </div>
@@ -62,7 +70,7 @@
 <script>
 import marked from "marked";
 import { isImage } from "./utils";
-import { calcHashSample } from './utils'
+import { calcHashSample } from "./utils";
 
 const CHUNK_SIZE = 1 * 1024 * 1024; // 1M
 
@@ -74,33 +82,33 @@ export default {
             file: null,
             hash: null,
             preview: null,
-            article: '# 开心的一天\n' +
-                '* 吃饭\n' +
-                '* 睡觉\n' +
-                '* 上王者',
+            article: "# 开心的一天\n" + "* 吃饭\n" + "* 睡觉\n" + "* 上王者",
             loading: false,
-            hashProgress: 0
+            hashProgress: 0,
         };
     },
     computed: {
         articleHtml() {
             return marked(this.article);
         },
+        cubeSideLen() {
+            return Math.ceil(Math.sqrt(this.chunks.length))
+        },
         cubeWidth() {
-            return Math.ceil(Math.sqrt(this.chunks.length)) * 16;
+            return this.cubeSideLen * ( 28 + 2 );
         },
         uploadProgress() {
             if (!this.file || !this.chunks.length) return 0;
             const loaded = this.chunks
-                .map(item => item.chunk.size * item.progress)
+                .map((item) => item.chunk.size * item.progress)
                 .reduce((acc, cur) => acc + cur);
             return parseInt((loaded / this.file.size).toFixed(2));
-        }
+        },
     },
     async mounted() {
-        // this.bindDragEvent('drag',()=>{
-        //   this.preview = window.URL.createObjectURL(this.file)
-        // })
+        this.bindDragEvent('drag',()=>{
+            this.preview = window.URL.createObjectURL(this.file)
+        })
         // this.bindDragEvent('article',async ()=>{
         //     this.loading = true
         //     const ret = await this.handleUpload()
@@ -111,7 +119,7 @@ export default {
     },
     methods: {
         handleFileChange(e) {
-            const [ file ] = e.target.files;
+            const [file] = e.target.files;
             if (!file) return;
 
             // if (file.size > CHUNK_SIZE) {
@@ -137,7 +145,7 @@ export default {
                 "/check",
                 {
                     ext: this.ext(this.file.name),
-                    hash: this.hash
+                    hash: this.hash,
                 }
             );
             if (uploaded) {
@@ -154,7 +162,7 @@ export default {
                     name: chunkName,
                     index,
                     // 设置进度条
-                    progress: uploadedList.indexOf(chunkName) > -1 ? 100 : 0
+                    progress: uploadedList.indexOf(chunkName) > -1 ? 100 : 0,
                 };
             });
             // 传入已经存在的切片清单
@@ -232,7 +240,7 @@ export default {
             await this.$axios.post("/merge", {
                 ext: this.ext(this.file.name),
                 size: CHUNK_SIZE,
-                hash: this.hash
+                hash: this.hash,
             });
         },
         sendRequest(chunks, limit = 4) {
@@ -251,14 +259,14 @@ export default {
                         const { form, index } = task;
                         try {
                             await this.$axios.post("/upload", form, {
-                                onUploadProgress: progress => {
+                                onUploadProgress: (progress) => {
                                     this.chunks[index].progress = Number(
                                         (
                                             (progress.loaded / progress.total) *
                                             100
                                         ).toFixed(2)
                                     );
-                                }
+                                },
                             });
                             if (counter == len - 1) {
                                 // 最后一个
@@ -299,7 +307,7 @@ export default {
         },
         async uploadChunks(uploadedList = []) {
             const list = this.chunks
-                .filter(chunk => uploadedList.indexOf(chunk.name) == -1)
+                .filter((chunk) => uploadedList.indexOf(chunk.name) == -1)
                 .map(({ chunk, name, hash, index }, i) => {
                     const form = new FormData();
                     form.append("chunkname", name);
@@ -326,7 +334,7 @@ export default {
             }
         },
         bindPasteEvent() {
-            this.$refs.article.addEventListener("paste", async e => {
+            this.$refs.article.addEventListener("paste", async (e) => {
                 const files = e.clipboardData.files;
                 if (!files.length) return;
                 this.file = files[0];
@@ -340,36 +348,37 @@ export default {
         },
         bindDragEvent(name, cb) {
             const drag = this.$refs[name];
-
-            drag.addEventListener("dragover", e => {
-                drag.style.borderColor = "red";
+            drag.addEventListener("dragover", (e) => {
+                drag.style.borderColor = "#409eff";
                 e.preventDefault();
             });
-            drag.addEventListener("dragleave", e => {
+            drag.addEventListener("dragleave", (e) => {
                 drag.style.borderColor = "#eee";
                 e.preventDefault();
             });
-            drag.addEventListener(
-                "drop",
-                e => {
-                    const fileList = e.dataTransfer.files;
-                    drag.style.borderColor = "#eee";
-                    this.file = fileList[0]; // 先只考虑单文件
-                    cb && cb();
-                    e.preventDefault();
-                },
-                false
-            );
-        }
-    }
+            drag.addEventListener("drop", (e) => {
+                const fileList = e.dataTransfer.files;
+                this.$refs.input.files = fileList;
+                drag.style.borderColor = "#eee";
+                this.file = fileList[0]; // 先只考虑单文件
+                cb && cb();
+                e.preventDefault();
+            }, false);
+        },
+    },
 };
 </script>
 
 <style lang="less">
-@color0: #eeeeee;
+@color0: #eee;
+@cube-size: 28px;
 
+body {
+    margin: 0;
+    padding: 0;
+}
 .app > div {
-    margin: 50px;
+    margin: 50px 15vw;
 }
 #drag {
     border: 2px dashed @color0;
@@ -382,35 +391,67 @@ img {
     width: 50px;
 }
 .output {
-    background: @color0;
     display: inline-block;
+    width: 300px;
     margin-left: 30px;
     padding: 10px;
     vertical-align: top;
-    width: 300px;
+    background-color: @color0;
     img {
         width: 200px;
     }
 }
+
+.row {
+    display: flex;
+    align-items: center;
+
+    > span {
+        display: inline-block;
+        min-width: 80px;
+        margin-right: 20px;
+    }
+    div:last-child {
+        flex: 1;
+    }
+}
+
 .cube-container {
-    overflow: hidden;
+    display: flex;
+    flex-wrap: wrap;
     width: 100px;
+    overflow: hidden;
 }
 .cube {
-    background: @color0;
-    border: 1px solid #000000;
-    float: left;
-    height: 14px;
-    line-height: 12px;
-    width: 14px;
-}
-.cube > .success {
-    background: #67c23a;
-}
-.cube > .uploading {
-    background: #409eff;
-}
-.cube > .error {
-    background: #f56c6c;
+    width: @cube-size;
+    height: @cube-size;
+    border: 1px solid #000;
+    border-right-width: 0;
+    border-top-width: 0;
+    background-color: @color0;
+
+    &.border-top {
+        border-top-width: 1px;
+    }
+    &.border-right {
+        border-right-width: 1px;
+    }
+    &:last-child {
+        border-right-width: 1px;
+    }
+
+    > div {
+        height: 100%;
+        line-height: @cube-size;
+    }
+    .success {
+        background-color: #67c23a;
+    }
+    .uploading {
+        background-color: #409eff;
+    }
+    .error {
+        background-color: #f56c6c;
+    }
 }
 </style>

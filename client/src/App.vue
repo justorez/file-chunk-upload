@@ -219,6 +219,10 @@ export default {
         pauseUpload() {
             this.paused = true
         },
+        /**
+         * @param {chunk[]} chunks
+         * @param {number} limit
+         */
         sendRequest(chunks, limit = 4) {
             return new Promise((resolve, reject) => {
                 const len = chunks.length
@@ -249,16 +253,14 @@ export default {
                             start()
                         }
                     } catch (e) {
-                        // 当前切片报错了
-                        // 尝试3次重试机制，重新push到数组中
-                        // 进度条改成红色
-                        this.chunks[index].progress = -1
+                        // 当前切片报错了：尝试3次重试机制
+                        this.chunks[index].progress = -1 // 进度条改成红色
                         if (task.error < 3) {
                             task.error++
-                            chunks.push(task) // 准备重试
+                            chunks.unshift(task) // 插入队头，准备重试
                             start()
                         } else {
-                            this.paused = true // 错误3次了 直接结束
+                            this.paused = true // 错误3次了，直接结束
                             reject(e)
                         }
                     }

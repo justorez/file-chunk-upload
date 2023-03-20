@@ -17,12 +17,24 @@
         <div v-if="file">{{file.name}}</div>
         -->
 
-        <div>
-            <el-button type="primary" @click="handleUpload">上 传</el-button>
-            <el-button type="primary" @click="handleSlowStartUpload"
-                >慢启动上传</el-button
-            >
-            <el-button type="success" @click="pauseUpload">暂停</el-button>
+        <div class="row">
+            <div class="row-item">
+                <span>最大重试次数</span>
+                <el-input-number
+                    v-model="maxRetryNum"
+                    :min="3"
+                    :max="10"
+                    controls-position="right"
+                    style="width:110px;flex:initial"
+                />
+            </div>
+            <div class="row-item" style="flex: 0 0 auto;">
+                <el-button type="primary" @click="handleUpload">上 传</el-button>
+                <el-button type="primary" @click="handleSlowStartUpload"
+                    >慢启动上传</el-button
+                >
+                <el-button type="success" @click="pauseUpload">暂停</el-button>
+            </div>
         </div>
 
         <div class="row">
@@ -44,7 +56,7 @@
         </div>
 
         <!-- 方块进度条 -->
-        <div class="cube-container" :style="{ width: cubeWidth + 'px' }">
+        <div class="cube-container" :style="{ width: cubeWidth }">
             <div
                 v-for="(chunk, index) in chunks"
                 :key="chunk.name"
@@ -62,11 +74,10 @@
                     }"
                     :style="{ width: chunk.progress + '%' }"
                 >
-                    <i
+                    <!-- <i
                         v-if="chunk.progress < 100 && chunk.progress > 1"
                         class="el-icon-loading"
-                        style="color: #f56c6c"
-                    ></i>
+                    ></i> -->
                 </div>
             </div>
         </div>
@@ -90,7 +101,8 @@ export default {
             preview: null,
             article: '# 开心的一天\n' + '* 吃饭\n' + '* 睡觉\n' + '* 上王者',
             loading: false,
-            hashProgress: 0
+            hashProgress: 0,
+            maxRetryNum: 3
         }
     },
     computed: {
@@ -98,11 +110,13 @@ export default {
             return marked(this.article)
         },
         cubeSideLen() {
-            const max = Math.floor(document.body.clientWidth * 0.7 / 28)
+            const max = Math.floor((document.body.clientWidth * 0.7) / 28)
+            // 尽量让分块进度展示成正方形
             return Math.min(max, Math.ceil(Math.sqrt(this.chunks.length)))
         },
         cubeWidth() {
-            return this.cubeSideLen * 28
+            // return this.cubeSideLen * 28 + 'px'
+            return 'auto' // 感觉长方形好看一下
         },
         uploadProgress() {
             if (!this.file || !this.chunks.length) return 0
@@ -113,9 +127,7 @@ export default {
         }
     },
     async mounted() {
-        this.bindDragEvent('drag', () => {
-            this.preview = window.URL.createObjectURL(this.file)
-        })
+        this.bindDragEvent('drag')
         // this.bindDragEvent('article',async ()=>{
         //     this.loading = true
         //     const ret = await this.handleUpload()
@@ -195,7 +207,7 @@ export default {
         },
         async uploadChunks(uploadedList = []) {
             const list = this.chunks
-                .filter(chunk => !uploadedList.includes(chunk.name))
+                .filter((chunk) => !uploadedList.includes(chunk.name))
                 .map(({ chunk, name, hash, index }) => {
                     const form = new FormData()
                     form.append('index', index)
@@ -255,7 +267,7 @@ export default {
                     } catch (e) {
                         // 当前切片报错了：尝试3次重试机制
                         this.chunks[index].progress = -1 // 进度条改成红色
-                        if (task.error < 3) {
+                        if (task.error < this.maxRetryNum) {
                             task.error++
                             chunks.unshift(task) // 插入队头，准备重试
                             start()
@@ -350,25 +362,21 @@ export default {
         bindDragEvent(name, cb) {
             const drag = this.$refs[name]
             drag.addEventListener('dragover', (e) => {
-                drag.style.borderColor = '#409eff'
                 e.preventDefault()
+                drag.style.borderColor = '#409eff'
             })
             drag.addEventListener('dragleave', (e) => {
                 drag.style.borderColor = '#eee'
                 e.preventDefault()
             })
-            drag.addEventListener(
-                'drop',
-                (e) => {
-                    const fileList = e.dataTransfer.files
-                    this.$refs.input.files = fileList
-                    drag.style.borderColor = '#eee'
-                    this.handleFileChange({ target:fileList })
-                    cb && cb()
-                    e.preventDefault()
-                },
-                false
-            )
+            drag.addEventListener('drop', (e) => {
+                e.preventDefault()
+                drag.style.borderColor = '#eee'
+                const fileList = e.dataTransfer.files
+                this.$refs.input.files = fileList
+                this.handleFileChange({ target: { files: fileList } })
+                cb && cb()
+            })
         }
     }
 }
@@ -409,22 +417,24 @@ img {
 
 .row {
     display: flex;
+    justify-content: space-between;
     align-items: center;
 
-    > span {
+    div:last-child {
+        flex: 1;
+    }
+
+    > span, .row-item > span {
         display: inline-block;
         min-width: 80px;
         margin-right: 20px;
-    }
-    div:last-child {
-        flex: 1;
     }
 }
 
 .cube-container {
     display: flex;
     flex-wrap: wrap;
-    width: 100px;
+    width: auto;
     overflow: hidden;
 }
 .cube {
